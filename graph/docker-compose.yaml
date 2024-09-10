@@ -1,0 +1,53 @@
+services:
+  aerospike:
+    networks:
+      - aerospike_graph
+    image: aerospike:ee-7.1.0.5_1
+    volumes:
+      - ./etc:/opt/aerospike/etc
+    environment:
+      FEATURE_KEY_FILE: "/opt/aerospike/etc/features.conf"
+      NAMESPACE: test
+      REPL_FACTOR: 2
+      MEM_GB: 1
+      DEFAULT_TTL: 0
+      STORAGE_GB: 4
+      NSUP_PERIOD: 120
+    ports:
+      - "3000:3000"
+    healthcheck:
+      interval: 10s
+      retries: 5
+      start_period: 300s
+      timeout: 10s
+      test: ["CMD-SHELL", "asinfo && sleep 5"]
+  gremlin-server:
+    depends_on:
+      aerospike:
+        condition: service_healthy
+    networks:
+      - aerospike_graph
+    image: aerospike/aerospike-graph-service
+    ports:
+      - "8182:8182"
+    environment:
+      aerospike.client.namespace: test
+      aerospike.client.host: "aerospike:3000"
+      aerospike.graph.index.vertex.label.enabled: true
+      aerospike.graph-service.heap.max: 1024m
+      #aerospike.graph.index.vertex.properties: property1,property2
+  gremlin-console:
+    depends_on:
+      gremlin-server:
+        condition: service_started
+    networks:
+      - aerospike_graph
+    image: tinkerpop/gremlin-console
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "while ! nc -z gremlin-server 8182; do sleep 1; done;
+      echo console-is-ready;
+      while true; do sleep 1; done"
+networks:
+  aerospike_graph:
+    driver: bridge

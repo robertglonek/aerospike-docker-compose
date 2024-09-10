@@ -1,0 +1,26 @@
+services:
+  aerospike:
+    networks:
+      - aerospike_graph
+    image: aerospike:ee-7.1.0.5_1
+    volumes:
+      - ./etc:/opt/aerospike/etc
+    environment:
+      FEATURE_KEY_FILE: "/opt/aerospike/etc/features.conf"
+      NAMESPACE: test
+      REPL_FACTOR: 2
+      MEM_GB: 1
+      DEFAULT_TTL: 0
+      STORAGE_GB: 4
+      NSUP_PERIOD: 120
+    ports:
+      - "3000:3000"
+    healthcheck:
+      interval: 10s
+      retries: 5
+      start_period: 300s
+      timeout: 10s
+      test: ["CMD-SHELL", "asinfo && sleep 5"]
+networks:
+  aerospike_graph:
+    driver: bridge
